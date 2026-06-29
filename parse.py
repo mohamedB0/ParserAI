@@ -2,9 +2,11 @@
 Financial Parser CLI - Parse XLSX/CSV files for RAG systems.
 
 Usage:
-    python parse.py <file_path> [--output json|md|both] [--sheets Sheet1 Sheet2]
-    python parse.py <file_path> --json <output.json>
-    python parse.py <file_path> --md <output.md>
+    python parse.py <file_path>
+    python parse.py <file_path> --json
+    python parse.py <file_path> --md
+    python parse.py <file_path> --json --md
+    python parse.py <file_path> --sheets Sheet1 Sheet2
 """
 
 import argparse
@@ -17,14 +19,26 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from financial_parser import FinancialParser
 
+OUTPUT_DIR = Path(__file__).parent / "output"
+
 
 def main():
     parser = argparse.ArgumentParser(
         description="Parse XLSX/CSV files for RAG systems"
     )
     parser.add_argument("file", help="Path to XLSX or CSV file")
-    parser.add_argument("--json", metavar="PATH", help="Export to JSON file")
-    parser.add_argument("--md", metavar="PATH", help="Export to Markdown file")
+    parser.add_argument(
+        "--json", action="store_true", help="Export to JSON in output/ folder"
+    )
+    parser.add_argument(
+        "--md", action="store_true", help="Export to Markdown in output/ folder"
+    )
+    parser.add_argument(
+        "--all", action="store_true", help="Export both JSON and Markdown"
+    )
+    parser.add_argument(
+        "--outdir", metavar="DIR", help="Custom output directory (default: output/)"
+    )
     parser.add_argument(
         "--sheets",
         nargs="+",
@@ -49,6 +63,11 @@ def main():
         print(f"Error: File not found: {file_path}")
         sys.exit(1)
 
+    out_dir = Path(args.outdir) if args.outdir else OUTPUT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    stem = file_path.stem
+
     fp = FinancialParser(
         sheet_names=args.sheets,
         detect_financial_type=not args.no_detect,
@@ -65,15 +84,24 @@ def main():
     if args.info:
         return
 
-    if args.json:
-        doc.to_json(args.json)
-        print(f"  JSON: {args.json}")
+    export_json = args.json or args.all
+    export_md = args.md or args.all
 
-    if args.md:
-        doc.to_markdown(args.md)
-        print(f"  Markdown: {args.md}")
+    if not export_json and not export_md:
+        export_json = True
+        export_md = True
 
-    if not args.json and not args.md:
+    if export_json:
+        json_path = out_dir / f"{stem}.json"
+        doc.to_json(json_path)
+        print(f"  JSON: {json_path}")
+
+    if export_md:
+        md_path = out_dir / f"{stem}.md"
+        doc.to_markdown(md_path)
+        print(f"  Markdown: {md_path}")
+
+    if not export_json and not export_md:
         print("\nChunks:")
         for c in doc.chunks[:5]:
             print(f"  [{c.chunk_id}] tokens={c.token_count} source={c.source_uri}")
