@@ -6,7 +6,7 @@ from typing import Any
 import openpyxl
 from openpyxl.cell.cell import MergedCell
 
-from financial_parser.core.models import Cell, SheetData, Table
+from financial_parser.core.models import Cell, SheetData, Table, TextBlock
 
 
 def get_merged_cell_value(cell: Cell, merge_map: dict[tuple[int, int], tuple[int, int]]) -> Any:
@@ -85,12 +85,16 @@ def read_sheet(
             ))
         rows.append(row_cells)
 
+    tables = _extract_tables(rows, sheet_name, ws.title if hasattr(ws, "title") else sheet_name)
+    text_blocks = _extract_text_blocks(rows, tables, sheet_name, ws.title if hasattr(ws, "title") else sheet_name)
+
     return SheetData(
         name=sheet_name,
         merged_cells=merged_ranges,
         total_rows=max_row,
         total_cols=max_col,
-        tables=_extract_tables(rows, sheet_name, ws.title if hasattr(ws, "title") else sheet_name),
+        tables=tables,
+        text_blocks=text_blocks,
     )
 
 
@@ -139,6 +143,79 @@ def _extract_tables(rows: list[list[Cell]], sheet_name: str, uri_sheet_name: str
         ))
 
     return tables
+
+
+def _extract_text_blocks(
+    rows: list[list[Cell]],
+    tables: list[Table],
+    sheet_name: str,
+    uri_sheet_name: str,
+    min_text_length: int = 10,
+) -> list[TextBlock]:
+    """Extract text blocks from rows that are not part of tables."""
+    if not rows:
+        return []
+
+    table_ranges: set[int] = set()
+    for table in tables:
+        for row_idx in range(table.start_row - 1, table.end_row):
+            table_ranges.add(row_idx)
+
+    text_blocks: list[TextBlock] = []
+    current_block_start: int | None = None
+    current_block_lines: list[str] = []
+
+    for idx, row in enumerate(rows):
+        if idx in table_ranges:
+            if current_block_start is not None and current_block_lines:
+                text_blocks.append(TextBlock(
+                    sheet_name=sheet_name,
+                    start_row=current_block_start + 1,
+                    end_row=idx,
+                    content=current_block_lines,
+                    source_uri=f"{uri_sheet_name}!A{current_block_start + 1}:Z{idx}",
+                ))
+            current_block_start = None
+            current_block_lines = []
+            continue
+
+        text_parts = []
+        for cell in row:
+            if cell.value is not None:
+                val = str(cell.value).strip()
+                if val:
+                    text_parts.append(val)
+
+        line = " ".join(text_parts)
+
+        if len(line) >= min_text_length:
+            if current_block_start is None:
+                current_block_start = idx
+                current_block_lines = [line]
+            else:
+                current_block_lines.append(line)
+        else:
+            if current_block_start is not None and current_block_lines:
+                text_blocks.append(TextBlock(
+                    sheet_name=sheet_name,
+                    start_row=current_block_start + 1,
+                    end_row=idx,
+                    content=current_block_lines,
+                    source_uri=f"{uri_sheet_name}!A{current_block_start + 1}:Z{idx}",
+                ))
+            current_block_start = None
+            current_block_lines = []
+
+    if current_block_start is not None and current_block_lines:
+        text_blocks.append(TextBlock(
+            sheet_name=sheet_name,
+            start_row=current_block_start + 1,
+            end_row=len(rows),
+            content=current_block_lines,
+            source_uri=f"{uri_sheet_name}!A{current_block_start + 1}:Z{len(rows)}",
+        ))
+
+    return text_blocks
 
 
 def read_xlsx(

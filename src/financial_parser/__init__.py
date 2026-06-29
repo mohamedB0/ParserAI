@@ -6,6 +6,7 @@ from financial_parser.core.parser import FinancialParser
 from financial_parser.core.models import (
     Cell,
     Table,
+    TextBlock,
     RAGChunk,
     SheetData,
     ParsedDocument,
@@ -16,6 +17,7 @@ __all__ = [
     "FinancialParser",
     "Cell",
     "Table",
+    "TextBlock",
     "RAGChunk",
     "SheetData",
     "ParsedDocument",

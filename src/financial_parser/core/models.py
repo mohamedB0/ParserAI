@@ -42,11 +42,22 @@ class Table(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class TextBlock(BaseModel):
+    """A block of text content extracted from a spreadsheet."""
+    sheet_name: str
+    start_row: int
+    end_row: int
+    content: list[str] = Field(default_factory=list)
+    source_uri: str = ""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class RAGChunk(BaseModel):
     """A chunk ready for RAG ingestion."""
     chunk_id: str
     content_text: str
     content_html: str
+    chunk_type: str = "table"  # "table" or "text"
     metadata: dict[str, Any] = Field(default_factory=dict)
     token_count: int = 0
     source_uri: str = ""
@@ -57,6 +68,7 @@ class SheetData(BaseModel):
     """Data extracted from a single sheet."""
     name: str
     tables: list[Table] = Field(default_factory=list)
+    text_blocks: list[TextBlock] = Field(default_factory=list)
     merged_cells: list[tuple[str, str]] = Field(default_factory=list)
     total_rows: int = 0
     total_cols: int = 0

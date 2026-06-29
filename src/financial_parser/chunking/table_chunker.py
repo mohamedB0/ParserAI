@@ -5,7 +5,7 @@ from typing import Any
 
 import tiktoken
 
-from financial_parser.core.models import RAGChunk, Table, FinancialStatementType
+from financial_parser.core.models import RAGChunk, Table, TextBlock, FinancialStatementType
 
 
 def _col_letter(idx: int) -> str:
@@ -134,3 +134,45 @@ def chunk_table(table: Table, filename: str) -> RAGChunk:
 def chunk_tables(tables: list[Table], filename: str) -> list[RAGChunk]:
     """Convert multiple tables into RAG chunks."""
     return [chunk_table(t, filename) for t in tables]
+
+
+def text_block_to_text(block: TextBlock) -> str:
+    """Convert a text block to plain text."""
+    return "\n".join(block.content)
+
+
+def text_block_to_html(block: TextBlock) -> str:
+    """Convert a text block to HTML."""
+    lines = ["<div>"]
+    for line in block.content:
+        lines.append(f"  <p>{line}</p>")
+    lines.append("</div>")
+    return "\n".join(lines)
+
+
+def chunk_text_block(block: TextBlock, filename: str) -> RAGChunk:
+    """Convert a text block into an RAG chunk."""
+    text = text_block_to_text(block)
+    html = text_block_to_html(block)
+    token_count = count_tokens(text)
+    chunk_id = generate_chunk_id(filename, block.source_uri)
+
+    metadata: dict[str, Any] = {
+        "sheet_name": block.sheet_name,
+        "line_count": len(block.content),
+    }
+
+    return RAGChunk(
+        chunk_id=chunk_id,
+        content_text=text,
+        content_html=html,
+        chunk_type="text",
+        metadata=metadata,
+        token_count=token_count,
+        source_uri=f"{filename}!{block.source_uri}",
+    )
+
+
+def chunk_text_blocks(blocks: list[TextBlock], filename: str) -> list[RAGChunk]:
+    """Convert multiple text blocks into RAG chunks."""
+    return [chunk_text_block(b, filename) for b in blocks]

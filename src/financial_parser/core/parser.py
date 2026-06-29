@@ -6,7 +6,7 @@ from typing import Any
 from financial_parser.core.exceptions import FileFormatError
 from financial_parser.core.models import ParsedDocument, SheetData
 from financial_parser.financial.statement_detector import detect_all_tables
-from financial_parser.chunking.table_chunker import chunk_tables
+from financial_parser.chunking.table_chunker import chunk_tables, chunk_text_blocks
 
 
 class FinancialParser:
@@ -53,10 +53,14 @@ class FinancialParser:
                 detect_all_tables(sheets[0].tables if sheets else [])
 
         all_tables = []
+        all_text_blocks = []
         for sheet in sheets:
             all_tables.extend(sheet.tables)
+            all_text_blocks.extend(sheet.text_blocks)
 
         chunks = chunk_tables(all_tables, filename)
+        text_chunks = chunk_text_blocks(all_text_blocks, filename)
+        chunks.extend(text_chunks)
 
         return ParsedDocument(
             filename=filename,
