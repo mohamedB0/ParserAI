@@ -9,6 +9,5 @@ build/
 .pytest_cache/
 .mypy_cache/
 *.json
-*.md
 *.xlsx
 Test.py
