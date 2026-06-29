@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "financial-parser"
+version = "0.1.0"
+description = "A parser for XLSX and CSV files optimized for financial RAG systems"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "ParserAI" },
+]
+dependencies = [
+    "openpyxl>=3.1.0",
+    "pandas>=2.0.0",
+    "tiktoken>=0.5.0",
+    "chardet>=5.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/financial_parser"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
